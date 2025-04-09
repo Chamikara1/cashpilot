@@ -1,0 +1,2 @@
+/Users/s.a.n.sathsarachamikara/StudioProjects/computing_group/android/app/.cxx/Debug/3wep1a6q/x86/CMakeFiles/edit_cache.dir
+/Users/s.a.n.sathsarachamikara/StudioProjects/computing_group/android/app/.cxx/Debug/3wep1a6q/x86/CMakeFiles/rebuild_cache.dir
