@@ -1,3 +1,5 @@
+import 'package:computing_group/analyticspage.dart';
+import 'package:computing_group/morepage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // Import for date formatting
 import 'transactionpage.dart';
@@ -306,7 +308,10 @@ class _DashboardPageState extends State<DashboardPage> {
               onTap: (index) {
                 // Handle navigation
                 if (index == 0) {
-                  // Navigate to Analytics
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => AnalyticsPage()),
+                  );
                   print("Analytics Clicked");
                 } else if (index == 1) {
                   Navigator.push(
@@ -315,7 +320,10 @@ class _DashboardPageState extends State<DashboardPage> {
                   );
                   print("Transactions Clicked");
                 } else if (index == 2) {
-                  // Navigate to More
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (context) => MorePage()),
+                  );
                   print("More Clicked");
                 }
               },

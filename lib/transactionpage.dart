@@ -1,3 +1,6 @@
+import 'package:computing_group/analyticspage.dart';
+import 'package:computing_group/analyticspage.dart';
+import 'package:computing_group/morepage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart'; // For date formatting
 import 'transaction_model.dart';
@@ -243,16 +246,15 @@ class _TransactionPageState extends State<TransactionPage> {
         onTap: (index) {
           // Handle navigation
           if (index == 0) {
-            // Navigate to Analytics
-            print("Analytics Clicked");
-          } else if (index == 1) {
             Navigator.push(
               context,
-              MaterialPageRoute(builder: (context) => TransactionPage()),
+              MaterialPageRoute(builder: (context) => AnalyticsPage()),
             );
+            print("Analytics Clicked");
+          } else if (index == 1) {
             print("Transactions Clicked");
           } else if (index == 2) {
-            // Navigate to More
+            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MorePage()));
             print("More Clicked");
           }
         },
