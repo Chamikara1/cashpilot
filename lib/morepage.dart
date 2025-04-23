@@ -1,3 +1,4 @@
+import 'package:computing_group/bankpage.dart';
 import 'package:computing_group/favoritepage.dart';
 import 'package:flutter/material.dart';
 import 'transactionpage.dart';
@@ -45,6 +46,13 @@ class MorePage extends StatelessWidget {
             }),
             _buildRoundedButton(Icons.flag, 'Goals', () {
               print('Goals tapped');
+            }),
+            _buildRoundedButton(Icons.account_balance, 'Bank', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => BankPage()), // Navigate to Dashboard Page
+              );
+              print('Bank tapped');
             }),
           ],
         ),

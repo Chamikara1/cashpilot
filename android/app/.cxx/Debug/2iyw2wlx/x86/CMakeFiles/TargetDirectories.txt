@@ -1,0 +1,2 @@
+C:/Users/Heshan Jayasinghe/AndroidStudioProjects/cashpilot/android/app/.cxx/Debug/2iyw2wlx/x86/CMakeFiles/edit_cache.dir
+C:/Users/Heshan Jayasinghe/AndroidStudioProjects/cashpilot/android/app/.cxx/Debug/2iyw2wlx/x86/CMakeFiles/rebuild_cache.dir

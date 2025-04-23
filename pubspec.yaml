@@ -39,6 +39,8 @@ dependencies:
   firebase_auth: ^4.17.9
   cloud_firestore: ^4.15.9
   google_sign_in: ^6.2.1 # Added for Google Authentication
+  telephony:
+    path: packages/telephony
 
 dev_dependencies:
   flutter_test:

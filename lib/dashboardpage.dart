@@ -1,11 +1,12 @@
 import 'package:computing_group/analyticspage.dart';
 import 'package:computing_group/morepage.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // Import for date formatting
+import 'package:intl/intl.dart';
 import 'transactionpage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'transaction_model.dart';
 import 'transaction_service.dart';
+import 'sms_service.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -14,18 +15,16 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final TextEditingController _incomeDateController = TextEditingController();
-  final TextEditingController _incomeReferenceController =
-      TextEditingController();
+  final TextEditingController _incomeReferenceController = TextEditingController();
   final TextEditingController _incomeAmountController = TextEditingController();
 
   final TextEditingController _expenseDateController = TextEditingController();
-  final TextEditingController _expenseReferenceController =
-      TextEditingController();
-  final TextEditingController _expenseAmountController =
-      TextEditingController();
+  final TextEditingController _expenseReferenceController = TextEditingController();
+  final TextEditingController _expenseAmountController = TextEditingController();
 
   final TransactionService _transactionService = TransactionService();
-  String? _selectedCategory; // Selected category for dropdown
+  final SmsService _smsService = SmsService();
+  String? _selectedCategory;
 
   @override
   void initState() {
@@ -34,11 +33,14 @@ class _DashboardPageState extends State<DashboardPage> {
     String formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _incomeDateController.text = formattedDate;
     _expenseDateController.text = formattedDate;
+
+    // Fetch and store SMS messages after the first frame is rendered
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _smsService.fetchAndStoreBankMessages();
+    });
   }
 
-  // Function to show date picker and update the text field
-  Future<void> _selectDate(
-      BuildContext context, TextEditingController controller) async {
+  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
     DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -53,8 +55,7 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _addIncome() async {
-    if (_incomeReferenceController.text.isEmpty ||
-        _incomeAmountController.text.isEmpty) {
+    if (_incomeReferenceController.text.isEmpty || _incomeAmountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please fill in all fields')),
       );
@@ -63,12 +64,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
+      if (userId == null) throw Exception('User not authenticated');
 
       final transaction = Transaction(
-        id: '', // Firestore will generate this
+        id: '',
         description: _incomeReferenceController.text,
         amount: double.parse(_incomeAmountController.text),
         date: DateFormat('yyyy-MM-dd').parse(_incomeDateController.text),
@@ -79,7 +78,6 @@ class _DashboardPageState extends State<DashboardPage> {
 
       await _transactionService.addTransaction(transaction);
 
-      // Clear the form
       _incomeReferenceController.clear();
       _incomeAmountController.clear();
 
@@ -105,12 +103,10 @@ class _DashboardPageState extends State<DashboardPage> {
 
     try {
       final userId = FirebaseAuth.instance.currentUser?.uid;
-      if (userId == null) {
-        throw Exception('User not authenticated');
-      }
+      if (userId == null) throw Exception('User not authenticated');
 
       final transaction = Transaction(
-        id: '', // Firestore will generate this
+        id: '',
         description: _expenseReferenceController.text,
         amount: double.parse(_expenseAmountController.text),
         date: DateFormat('yyyy-MM-dd').parse(_expenseDateController.text),
@@ -121,12 +117,9 @@ class _DashboardPageState extends State<DashboardPage> {
 
       await _transactionService.addTransaction(transaction);
 
-      // Clear the form
       _expenseReferenceController.clear();
       _expenseAmountController.clear();
-      setState(() {
-        _selectedCategory = null;
-      });
+      setState(() => _selectedCategory = null);
 
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Expense added successfully')),
@@ -148,31 +141,29 @@ class _DashboardPageState extends State<DashboardPage> {
               physics: AlwaysScrollableScrollPhysics(),
               padding: const EdgeInsets.all(16.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment
-                    .center, // Centers the children horizontally
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
-                  SizedBox(height: 30), // Space at the top
+                  SizedBox(height: 30),
                   Center(
                     child: Text(
                       'Hello! User',
                       style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF006FB9)),
-                      textAlign: TextAlign.center,
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF006FB9),
+                      ),
                     ),
                   ),
-                  SizedBox(height: 75), // Space below the greeting
+                  SizedBox(height: 75),
 
-                  // Add Income Section
+                  // Income Section
                   Center(
                     child: Text(
                       'Add Income',
                       style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black),
-                      textAlign: TextAlign.center,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   SizedBox(height: 10),
@@ -183,8 +174,7 @@ class _DashboardPageState extends State<DashboardPage> {
                       labelText: 'Date',
                       suffixIcon: IconButton(
                         icon: Icon(Icons.calendar_today),
-                        onPressed: () =>
-                            _selectDate(context, _incomeDateController),
+                        onPressed: () => _selectDate(context, _incomeDateController),
                       ),
                     ),
                   ),
@@ -202,26 +192,22 @@ class _DashboardPageState extends State<DashboardPage> {
                     child: ElevatedButton(
                       onPressed: _addIncome,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF006FB9), // Button color
+                        backgroundColor: Color(0xFF006FB9),
                       ),
-                      child: Text(
-                        'ADD',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      child: Text('ADD', style: TextStyle(color: Colors.white)),
                     ),
                   ),
 
-                  SizedBox(height: 50), // Space between sections
+                  SizedBox(height: 50),
 
-                  // Add Expenses Section
+                  // Expense Section
                   Center(
                     child: Text(
                       'Add Expenses',
                       style: TextStyle(
-                          fontSize: 22,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black),
-                      textAlign: TextAlign.center,
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                      ),
                     ),
                   ),
                   SizedBox(height: 10),
@@ -232,23 +218,16 @@ class _DashboardPageState extends State<DashboardPage> {
                       labelText: 'Date',
                       suffixIcon: IconButton(
                         icon: Icon(Icons.calendar_today),
-                        onPressed: () =>
-                            _selectDate(context, _expenseDateController),
+                        onPressed: () => _selectDate(context, _expenseDateController),
                       ),
                     ),
                   ),
                   DropdownButtonFormField<String>(
                     value: _selectedCategory,
-                    items: ['Food', 'Transport', 'Bills', 'Shopping']
-                        .map((String category) {
-                      return DropdownMenuItem(
-                          value: category, child: Text(category));
+                    items: ['Food', 'Transport', 'Bills', 'Shopping'].map((String category) {
+                      return DropdownMenuItem(value: category, child: Text(category));
                     }).toList(),
-                    onChanged: (value) {
-                      setState(() {
-                        _selectedCategory = value;
-                      });
-                    },
+                    onChanged: (value) => setState(() => _selectedCategory = value),
                     decoration: InputDecoration(labelText: 'Category'),
                   ),
                   TextField(
@@ -265,12 +244,9 @@ class _DashboardPageState extends State<DashboardPage> {
                     child: ElevatedButton(
                       onPressed: _addExpense,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Color(0xFF006FB9), // Button color
+                        backgroundColor: Color(0xFF006FB9),
                       ),
-                      child: Text(
-                        'ADD',
-                        style: TextStyle(color: Colors.white),
-                      ),
+                      child: Text('ADD', style: TextStyle(color: Colors.white)),
                     ),
                   ),
                 ],
@@ -278,11 +254,10 @@ class _DashboardPageState extends State<DashboardPage> {
             ),
           ),
 
-          // Fixed Bottom Bar with the new "Transactions" button
+          // Bottom Navigation
           Container(
             decoration: BoxDecoration(
-              border: Border(
-                  top: BorderSide(color: Colors.grey.shade300, width: 1)),
+              border: Border(top: BorderSide(color: Colors.grey.shade300, width: 1)),
               color: Colors.white,
             ),
             child: BottomNavigationBar(
@@ -296,8 +271,7 @@ class _DashboardPageState extends State<DashboardPage> {
                   label: 'Analytics',
                 ),
                 BottomNavigationBarItem(
-                  icon: Icon(
-                      Icons.monetization_on), // Updated icon for Transactions
+                  icon: Icon(Icons.monetization_on),
                   label: 'Transactions',
                 ),
                 BottomNavigationBarItem(
@@ -306,25 +280,12 @@ class _DashboardPageState extends State<DashboardPage> {
                 ),
               ],
               onTap: (index) {
-                // Handle navigation
                 if (index == 0) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => AnalyticsPage()),
-                  );
-                  print("Analytics Clicked");
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => AnalyticsPage()));
                 } else if (index == 1) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => TransactionPage()),
-                  );
-                  print("Transactions Clicked");
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => TransactionPage()));
                 } else if (index == 2) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (context) => MorePage()),
-                  );
-                  print("More Clicked");
+                  Navigator.push(context, MaterialPageRoute(builder: (context) => MorePage()));
                 }
               },
             ),
