@@ -1,13 +1,13 @@
 import 'package:cloud_firestore/cloud_firestore.dart' as fs;
 import 'package:firebase_auth/firebase_auth.dart';
-import 'transaction_model.dart';
+import 'transaction_model.dart'; // Updated import
 
 class TransactionService {
   final fs.FirebaseFirestore _firestore = fs.FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
   // Add a new transaction
-  Future<void> addTransaction(Transaction transaction) async {
+  Future<void> addTransaction(FinancialTransaction transaction) async {
     try {
       await _firestore.collection('transactions').add(transaction.toMap());
     } catch (e) {
@@ -17,7 +17,7 @@ class TransactionService {
   }
 
   // Get all transactions for the current user
-  Stream<List<Transaction>> getTransactions() {
+  Stream<List<FinancialTransaction>> getTransactions() {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
       throw Exception('User not authenticated');
@@ -30,13 +30,13 @@ class TransactionService {
         .snapshots()
         .map((snapshot) {
       return snapshot.docs
-          .map((doc) => Transaction.fromMap(doc.id, doc.data()))
+          .map((doc) => FinancialTransaction.fromMap(doc.id, doc.data()))
           .toList();
     });
   }
 
   // Get transactions filtered by date range
-  Stream<List<Transaction>> getTransactionsByDateRange(
+  Stream<List<FinancialTransaction>> getTransactionsByDateRange(
       DateTime startDate, DateTime endDate) {
     final userId = _auth.currentUser?.uid;
     if (userId == null) {
@@ -69,18 +69,43 @@ class TransactionService {
           .snapshots()
           .map((snapshot) {
         return snapshot.docs
-            .map((doc) => Transaction.fromMap(doc.id, doc.data()))
+            .map((doc) => FinancialTransaction.fromMap(doc.id, doc.data()))
             .toList();
       }).handleError((error) {
         print('Error fetching transactions: $error');
         if (error.toString().contains('failed-precondition')) {
           print('Please create the required index in Firebase Console');
         }
-        return <Transaction>[];
+        return <FinancialTransaction>[];
       });
     } catch (e) {
       print('Error in getTransactionsByDateRange: $e');
-      return Stream.value(<Transaction>[]);
+      return Stream.value(<FinancialTransaction>[]);
+    }
+  }
+
+  // Additional useful methods you might want to add:
+
+  // Update a transaction
+  Future<void> updateTransaction(FinancialTransaction transaction) async {
+    try {
+      await _firestore
+          .collection('transactions')
+          .doc(transaction.id)
+          .update(transaction.toMap());
+    } catch (e) {
+      print('Error updating transaction: $e');
+      rethrow;
+    }
+  }
+
+  // Delete a transaction
+  Future<void> deleteTransaction(String transactionId) async {
+    try {
+      await _firestore.collection('transactions').doc(transactionId).delete();
+    } catch (e) {
+      print('Error deleting transaction: $e');
+      rethrow;
     }
   }
 }

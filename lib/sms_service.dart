@@ -129,7 +129,7 @@ class SmsService {
           });
 
           // Only store in transactions collection if it's a valid transaction (amount > 0)
-          if (parsedData['amount'] > 0) {
+          if (parsedData['amount'] > -1) {
             final transactionDocRef = transactionsCollectionRef.doc();
             batch.set(transactionDocRef, {
               'userId': userId,

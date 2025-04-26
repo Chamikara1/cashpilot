@@ -1,6 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-class Transaction {
+class FinancialTransaction {
   final String id;
   final String description;
   final double amount;
@@ -9,7 +9,7 @@ class Transaction {
   final String type;
   final String userId;
 
-  Transaction({
+  FinancialTransaction({
     required this.id,
     required this.description,
     required this.amount,
@@ -32,13 +32,13 @@ class Transaction {
     };
   }
 
-  factory Transaction.fromMap(String id, Map<String, dynamic> map) {
+  factory FinancialTransaction.fromMap(String id, Map<String, dynamic> map) {
     final timestamp = map['date'] as Timestamp;
     final date = timestamp.toDate();
     // Normalize the date to start of day
     final normalizedDate = DateTime(date.year, date.month, date.day);
 
-    return Transaction(
+    return FinancialTransaction(
       id: id,
       description: map['description'] ?? '',
       amount: (map['amount'] ?? 0.0).toDouble(),

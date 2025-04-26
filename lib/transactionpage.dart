@@ -1,9 +1,8 @@
 import 'package:computing_group/analyticspage.dart';
-import 'package:computing_group/analyticspage.dart';
 import 'package:computing_group/morepage.dart';
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart'; // For date formatting
-import 'transaction_model.dart';
+import 'package:intl/intl.dart';
+import 'transaction_model.dart'; // Updated import
 import 'transaction_service.dart';
 
 class TransactionPage extends StatefulWidget {
@@ -25,7 +24,6 @@ class _TransactionPageState extends State<TransactionPage> {
     _endDateController.text = formattedDate;
   }
 
-  // Function to show date picker and update the text field
   Future<void> _selectDate(
       BuildContext context, TextEditingController controller) async {
     DateTime? picked = await showDatePicker(
@@ -41,13 +39,10 @@ class _TransactionPageState extends State<TransactionPage> {
     }
   }
 
-  // Function to apply filter based on selected categories
   void _applyFilter() {
-    // Refresh the UI to show filtered transactions
     setState(() {});
   }
 
-  // Function to show the filter dialog
   void _showFilterDialog() async {
     List<String> categories = [
       'Income',
@@ -56,8 +51,7 @@ class _TransactionPageState extends State<TransactionPage> {
       'Entertainment',
       'Transport'
     ];
-    List<String> selectedTemp = List.from(
-        selectedCategories); // Temporary list to hold selected categories
+    List<String> selectedTemp = List.from(selectedCategories);
 
     showDialog(
       context: context,
@@ -81,8 +75,7 @@ class _TransactionPageState extends State<TransactionPage> {
                           }
                         });
                       },
-                      controlAffinity: ListTileControlAffinity
-                          .leading, // To display checkbox on the left
+                      controlAffinity: ListTileControlAffinity.leading,
                     );
                   },
                 );
@@ -93,17 +86,16 @@ class _TransactionPageState extends State<TransactionPage> {
             TextButton(
               onPressed: () {
                 setState(() {
-                  selectedCategories =
-                      List.from(selectedTemp); // Update the selected categories
+                  selectedCategories = List.from(selectedTemp);
                 });
                 Navigator.of(context).pop();
-                _applyFilter(); // Apply filter logic
+                _applyFilter();
               },
               child: Text('Apply'),
             ),
             TextButton(
               onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.of(context).pop();
               },
               child: Text('Cancel'),
             ),
@@ -115,26 +107,22 @@ class _TransactionPageState extends State<TransactionPage> {
 
   @override
   Widget build(BuildContext context) {
-    DateTime startDate =
-        DateFormat('yyyy-MM-dd').parse(_startDateController.text);
+    DateTime startDate = DateFormat('yyyy-MM-dd').parse(_startDateController.text);
     DateTime endDate = DateFormat('yyyy-MM-dd').parse(_endDateController.text);
 
     return Scaffold(
       appBar: AppBar(
         title: Text('Transaction'),
-        centerTitle: true, // This centers the title in the app bar
+        centerTitle: true,
       ),
       body: SingleChildScrollView(
-        // Add this to make the content scrollable
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // Date range selectors,
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Start Date
                 Expanded(
                   child: TextField(
                     controller: _startDateController,
@@ -142,14 +130,12 @@ class _TransactionPageState extends State<TransactionPage> {
                     decoration: InputDecoration(
                       suffixIcon: IconButton(
                         icon: Icon(Icons.calendar_today),
-                        onPressed: () =>
-                            _selectDate(context, _startDateController),
+                        onPressed: () => _selectDate(context, _startDateController),
                       ),
                     ),
                   ),
                 ),
                 SizedBox(width: 10),
-                // End Date
                 Expanded(
                   child: TextField(
                     controller: _endDateController,
@@ -157,13 +143,11 @@ class _TransactionPageState extends State<TransactionPage> {
                     decoration: InputDecoration(
                       suffixIcon: IconButton(
                         icon: Icon(Icons.calendar_today),
-                        onPressed: () =>
-                            _selectDate(context, _endDateController),
+                        onPressed: () => _selectDate(context, _endDateController),
                       ),
                     ),
                   ),
                 ),
-                // Filter Circle Button
                 IconButton(
                   icon: CircleAvatar(
                     backgroundColor: Color(0xFF006FB9),
@@ -174,19 +158,13 @@ class _TransactionPageState extends State<TransactionPage> {
                       size: 20,
                     ),
                   ),
-                  onPressed:
-                      _showFilterDialog, // Show filter dialog when clicked
+                  onPressed: _showFilterDialog,
                 ),
               ],
             ),
-
-            // Transactions Cards
             SizedBox(height: 10),
-
-            // Loop through the filtered transaction data and display it
-            StreamBuilder<List<Transaction>>(
-              stream: _transactionService.getTransactionsByDateRange(
-                  startDate, endDate),
+            StreamBuilder<List<FinancialTransaction>>(  // Updated type here
+              stream: _transactionService.getTransactionsByDateRange(startDate, endDate),
               builder: (context, snapshot) {
                 if (snapshot.hasError) {
                   return Center(child: Text('Error: ${snapshot.error}'));
@@ -197,8 +175,6 @@ class _TransactionPageState extends State<TransactionPage> {
                 }
 
                 final transactions = snapshot.data ?? [];
-
-                // Filter transactions based on selected categories
                 final filteredTransactions = transactions.where((transaction) {
                   return selectedCategories.isEmpty ||
                       selectedCategories.contains(transaction.category);
@@ -235,7 +211,7 @@ class _TransactionPageState extends State<TransactionPage> {
             label: 'Analytics',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.monetization_on), // Updated icon for Transactions
+            icon: Icon(Icons.monetization_on),
             label: 'Transactions',
           ),
           BottomNavigationBarItem(
@@ -244,18 +220,18 @@ class _TransactionPageState extends State<TransactionPage> {
           ),
         ],
         onTap: (index) {
-          // Handle navigation
           if (index == 0) {
             Navigator.push(
               context,
               MaterialPageRoute(builder: (context) => AnalyticsPage()),
             );
-            print("Analytics Clicked");
           } else if (index == 1) {
-            print("Transactions Clicked");
+            // Already on Transactions page
           } else if (index == 2) {
-            Navigator.pushReplacement(context, MaterialPageRoute(builder: (context) => MorePage()));
-            print("More Clicked");
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(builder: (context) => MorePage()),
+            );
           }
         },
       ),
@@ -268,14 +244,13 @@ class TransactionCard extends StatelessWidget {
   final String amount;
   final String date;
   final String category;
-  final String type; // Store type to conditionally display category
+  final String type;
 
   TransactionCard(
       this.description, this.amount, this.date, this.category, this.type);
 
   @override
   Widget build(BuildContext context) {
-    // If the type is 'Expense', display the category and change amount color to red
     bool isExpense = type == 'Expense';
 
     return Card(
@@ -294,7 +269,7 @@ class TransactionCard extends StatelessWidget {
               description,
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
             ),
-            if (isExpense) // Show the category only if it's an expense
+            if (isExpense)
               Text(
                 category,
                 style: TextStyle(fontSize: 14),
@@ -306,18 +281,10 @@ class TransactionCard extends StatelessWidget {
           style: TextStyle(
             fontSize: 16,
             fontWeight: FontWeight.bold,
-            color: isExpense
-                ? Colors.red
-                : Colors.black, // Set color to red for expenses
+            color: isExpense ? Colors.red : Colors.black,
           ),
         ),
       ),
     );
   }
-}
-
-void main() {
-  runApp(MaterialApp(
-    home: TransactionPage(),
-  ));
 }

@@ -1,10 +1,11 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:computing_group/analyticspage.dart';
 import 'package:computing_group/morepage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'transactionpage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'transaction_model.dart';
+import 'transaction_model.dart'; // Updated import
 import 'transaction_service.dart';
 import 'sms_service.dart';
 
@@ -24,20 +25,50 @@ class _DashboardPageState extends State<DashboardPage> {
 
   final TransactionService _transactionService = TransactionService();
   final SmsService _smsService = SmsService();
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
   String? _selectedCategory;
+  List<String> _userCategories = [];
+  bool _loadingCategories = true;
 
   @override
   void initState() {
     super.initState();
-    // Auto-fill the current date when the page loads
     String formattedDate = DateFormat('yyyy-MM-dd').format(DateTime.now());
     _incomeDateController.text = formattedDate;
     _expenseDateController.text = formattedDate;
 
-    // Fetch and store SMS messages after the first frame is rendered
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _smsService.fetchAndStoreBankMessages();
     });
+
+    _loadUserCategories();
+  }
+
+  Future<void> _loadUserCategories() async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      setState(() => _loadingCategories = false);
+      return;
+    }
+
+    try {
+      final doc = await _firestore.collection('category').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        setState(() {
+          _userCategories = List<String>.from(doc.data()!['categories'] ?? []);
+          _loadingCategories = false;
+        });
+      } else {
+        setState(() {
+          _userCategories = [];
+          _loadingCategories = false;
+        });
+      }
+    } catch (e) {
+      setState(() => _loadingCategories = false);
+      print('Error loading categories: $e');
+    }
   }
 
   Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
@@ -66,7 +97,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) throw Exception('User not authenticated');
 
-      final transaction = Transaction(
+      final transaction = FinancialTransaction( // Updated class name
         id: '',
         description: _incomeReferenceController.text,
         amount: double.parse(_incomeAmountController.text),
@@ -105,7 +136,21 @@ class _DashboardPageState extends State<DashboardPage> {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) throw Exception('User not authenticated');
 
-      final transaction = Transaction(
+      if (_selectedCategory == 'Other') {
+        final newCategory = await _promptForNewCategory(context);
+        if (newCategory == null || newCategory.isEmpty) return;
+
+        await _firestore.collection('category').doc(userId).set({
+          'categories': FieldValue.arrayUnion([newCategory]),
+        }, SetOptions(merge: true));
+
+        setState(() {
+          _userCategories.add(newCategory);
+          _selectedCategory = newCategory;
+        });
+      }
+
+      final transaction = FinancialTransaction( // Updated class name
         id: '',
         description: _expenseReferenceController.text,
         amount: double.parse(_expenseAmountController.text),
@@ -129,6 +174,38 @@ class _DashboardPageState extends State<DashboardPage> {
         SnackBar(content: Text('Error adding expense: $e')),
       );
     }
+  }
+
+  Future<String?> _promptForNewCategory(BuildContext context) async {
+    final controller = TextEditingController();
+    return await showDialog<String>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: Text('New Category'),
+        content: TextField(
+          controller: controller,
+          decoration: InputDecoration(
+            labelText: 'Category Name',
+            hintText: 'Enter a name for your new category',
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () {
+              final name = controller.text.trim();
+              if (name.isNotEmpty) {
+                Navigator.of(context).pop(name);
+              }
+            },
+            child: Text('Add'),
+          ),
+        ],
+      ),
+    );
   }
 
   @override
@@ -224,11 +301,21 @@ class _DashboardPageState extends State<DashboardPage> {
                   ),
                   DropdownButtonFormField<String>(
                     value: _selectedCategory,
-                    items: ['Food', 'Transport', 'Bills', 'Shopping'].map((String category) {
-                      return DropdownMenuItem(value: category, child: Text(category));
-                    }).toList(),
+                    items: [
+                      ..._userCategories.map((category) => DropdownMenuItem(
+                        value: category,
+                        child: Text(category),
+                      )),
+                      DropdownMenuItem(
+                        value: 'Other',
+                        child: Text('Other'),
+                      ),
+                    ],
                     onChanged: (value) => setState(() => _selectedCategory = value),
-                    decoration: InputDecoration(labelText: 'Category'),
+                    decoration: InputDecoration(
+                      labelText: 'Category',
+                      hintText: _loadingCategories ? 'Loading categories...' : 'Select a category',
+                    ),
                   ),
                   TextField(
                     controller: _expenseReferenceController,
