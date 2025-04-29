@@ -1,1 +1,46 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"cashpilot-76524","appId":"1:471547847837:android:2afa68d2320465f1e0a074","fileOutput":"android/app/google-services.json"}},"ios":{"default":{"projectId":"cashpilot-76524","appId":"1:471547847837:ios:9363034bcc3564f2e0a074","uploadDebugSymbols":false,"fileOutput":"ios/Runner/GoogleService-Info.plist"}},"dart":{"lib/firebase_options.dart":{"projectId":"cashpilot-76524","configurations":{"android":"1:471547847837:android:2afa68d2320465f1e0a074","ios":"1:471547847837:ios:9363034bcc3564f2e0a074"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "cashpilot-76524",
+          "appId": "1:471547847837:android:2afa68d2320465f1e0a074",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "ios": {
+        "default": {
+          "projectId": "cashpilot-76524",
+          "appId": "1:471547847837:ios:9363034bcc3564f2e0a074",
+          "uploadDebugSymbols": false,
+          "fileOutput": "ios/Runner/GoogleService-Info.plist"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "cashpilot-76524",
+          "configurations": {
+            "android": "1:471547847837:android:2afa68d2320465f1e0a074",
+            "ios": "1:471547847837:ios:9363034bcc3564f2e0a074"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint"
+      ]
+    }
+  ]
+}

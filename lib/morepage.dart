@@ -1,6 +1,7 @@
 import 'package:computing_group/bankpage.dart';
 import 'package:computing_group/categorypage.dart';
 import 'package:computing_group/favoritepage.dart';
+import 'package:computing_group/recurringpage.dart';
 import 'package:flutter/material.dart';
 import 'transactionpage.dart';
 import 'analyticspage.dart';
@@ -36,6 +37,10 @@ class MorePage extends StatelessWidget {
               print('Profile tapped');
             }),
             _buildRoundedButton(Icons.repeat, 'Recurrings', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => RecurringPaymentPage()), // Navigate to Dashboard Page
+              );
               print('Recurrings tapped');
             }),
             _buildRoundedButton(Icons.favorite, 'Favorites', () {
