@@ -1,6 +1,7 @@
 import 'package:computing_group/bankpage.dart';
 import 'package:computing_group/categorypage.dart';
 import 'package:computing_group/favoritepage.dart';
+import 'package:computing_group/goalspage.dart';
 import 'package:computing_group/recurringpage.dart';
 import 'package:flutter/material.dart';
 import 'transactionpage.dart';
@@ -50,7 +51,11 @@ class MorePage extends StatelessWidget {
               );
               print('Favorites tapped');
             }),
-            _buildRoundedButton(Icons.flag, 'Goals', () {
+            _buildRoundedButton(Icons.account_balance_wallet, 'Set Budgets', () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => GoalPage()), // Navigate to Dashboard Page
+              );
               print('Goals tapped');
             }),
             _buildRoundedButton(Icons.account_balance, 'Bank', () {

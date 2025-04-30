@@ -1,13 +1,17 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:computing_group/analyticspage.dart';
+import 'package:computing_group/favoritepage.dart';
 import 'package:computing_group/morepage.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'transactionpage.dart';
+import 'notificationspage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'transaction_model.dart'; // Updated import
+import 'transaction_model.dart';
 import 'transaction_service.dart';
 import 'sms_service.dart';
+import 'package:badges/badges.dart' as badges;
+import 'dart:async';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -30,6 +34,8 @@ class _DashboardPageState extends State<DashboardPage> {
   String? _selectedCategory;
   List<String> _userCategories = [];
   bool _loadingCategories = true;
+  bool _hasNotifications = false;
+  StreamSubscription<QuerySnapshot>? _notificationsSubscription;
 
   @override
   void initState() {
@@ -43,6 +49,22 @@ class _DashboardPageState extends State<DashboardPage> {
     });
 
     _loadUserCategories();
+    _setupNotificationsListener();
+  }
+
+  void _setupNotificationsListener() {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return;
+
+    _notificationsSubscription = _firestore
+        .collection('notifications')
+        .where('userId', isEqualTo: user.uid)
+        .snapshots()
+        .listen((snapshot) {
+      setState(() {
+        _hasNotifications = snapshot.docs.isNotEmpty;
+      });
+    });
   }
 
   Future<void> _loadUserCategories() async {
@@ -97,7 +119,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) throw Exception('User not authenticated');
 
-      final transaction = FinancialTransaction( // Updated class name
+      final transaction = FinancialTransaction(
         id: '',
         description: _incomeReferenceController.text,
         amount: double.parse(_incomeAmountController.text),
@@ -136,21 +158,7 @@ class _DashboardPageState extends State<DashboardPage> {
       final userId = FirebaseAuth.instance.currentUser?.uid;
       if (userId == null) throw Exception('User not authenticated');
 
-      if (_selectedCategory == 'Other') {
-        final newCategory = await _promptForNewCategory(context);
-        if (newCategory == null || newCategory.isEmpty) return;
-
-        await _firestore.collection('category').doc(userId).set({
-          'categories': FieldValue.arrayUnion([newCategory]),
-        }, SetOptions(merge: true));
-
-        setState(() {
-          _userCategories.add(newCategory);
-          _selectedCategory = newCategory;
-        });
-      }
-
-      final transaction = FinancialTransaction( // Updated class name
+      final transaction = FinancialTransaction(
         id: '',
         description: _expenseReferenceController.text,
         amount: double.parse(_expenseAmountController.text),
@@ -221,15 +229,35 @@ class _DashboardPageState extends State<DashboardPage> {
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: <Widget>[
                   SizedBox(height: 30),
-                  Center(
-                    child: Text(
-                      'Hello! User',
-                      style: TextStyle(
-                        fontSize: 24,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF006FB9),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Hello!',
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF006FB9),
+                        ),
                       ),
-                    ),
+                      IconButton(
+                        icon: _hasNotifications
+                            ? badges.Badge(
+                          badgeStyle: badges.BadgeStyle(
+                            badgeColor: Colors.red,
+                          ),
+                          position: badges.BadgePosition.topEnd(top: -5, end: -5),
+                          child: Icon(Icons.notifications, color: Color(0xFF006FB9)),
+                        )
+                            : Icon(Icons.notifications, color: Color(0xFF006FB9)),
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => NotificationsPage()),
+                          );
+                        },
+                      ),
+                    ],
                   ),
                   SizedBox(height: 75),
 
@@ -379,11 +407,28 @@ class _DashboardPageState extends State<DashboardPage> {
           ),
         ],
       ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: 60.0), // Adjust this value to position above bottom bar
+        child: FloatingActionButton(
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => FavoritePage()),
+            );
+            // Add your favorite button action here
+          },
+          backgroundColor: Color(0xFF006FB9),
+          child: Icon(Icons.favorite, color: Colors.white),
+          elevation: 4.0,
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
     );
   }
 
   @override
   void dispose() {
+    _notificationsSubscription?.cancel();
     _incomeDateController.dispose();
     _incomeReferenceController.dispose();
     _incomeAmountController.dispose();

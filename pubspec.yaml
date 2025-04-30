@@ -41,6 +41,7 @@ dependencies:
   google_sign_in: ^6.2.1 # Added for Google Authentication
   telephony:
     path: packages/telephony
+  badges: ^3.0.0
 
 dev_dependencies:
   flutter_test:

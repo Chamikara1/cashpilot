@@ -1,14 +1,52 @@
-import 'package:computing_group/analyticspage.dart';
-import 'package:computing_group/morepage.dart';
-import 'package:computing_group/transactionpage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
-// Example Favorite model (you can extend it with more fields)
+class CategoryService {
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+
+  Future<List<String>> getCategories() async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) return [];
+
+      final doc = await _firestore.collection('category').doc(user.uid).get();
+      if (doc.exists && doc.data() != null) {
+        return List<String>.from(doc.data()!['categories'] ?? []);
+      }
+      return [];
+    } catch (e) {
+      print('Error fetching categories: $e');
+      return [];
+    }
+  }
+}
+
 class Favorite {
+  final String id;
+  final String userId;
   final String name;
   final String category;
+  final String type; // Added type field
 
-  Favorite({required this.name, required this.category});
+  Favorite({
+    required this.id,
+    required this.userId,
+    required this.name,
+    required this.category,
+    required this.type, // Added type parameter
+  });
+
+  factory Favorite.fromFirestore(DocumentSnapshot doc) {
+    Map data = doc.data() as Map<String, dynamic>;
+    return Favorite(
+      id: doc.id,
+      userId: data['userId'] ?? '',
+      name: data['name'] ?? '',
+      category: data['category'] ?? '',
+      type: data['type'] ?? '', // Extract type from Firestore
+    );
+  }
 }
 
 class FavoritePage extends StatefulWidget {
@@ -17,73 +55,188 @@ class FavoritePage extends StatefulWidget {
 }
 
 class _FavoritePageState extends State<FavoritePage> {
-  List<String> selectedCategories = [];
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final CategoryService _categoryService = CategoryService();
+  List<Favorite> favorites = [];
+  bool _isLoading = true;
+  String? _selectedCategory;
 
-  // Sample data for favorites
-  List<Favorite> favorites = [
-    Favorite(name: 'Starbucks', category: 'Food'),
-    Favorite(name: 'Cinema', category: 'Entertainment'),
-    Favorite(name: 'Uber', category: 'Transport'),
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadFavorites();
+  }
 
-  // Function to handle adding a new favorite
-  void _addFavorite() {
+  Future<void> _loadFavorites() async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      final querySnapshot = await _firestore
+          .collection('favorites')
+          .where('userId', isEqualTo: user.uid)
+          .get();
+
+      setState(() {
+        favorites = querySnapshot.docs
+            .map((doc) => Favorite.fromFirestore(doc))
+            .toList();
+        _isLoading = false;
+      });
+    } catch (e) {
+      print('Error loading favorites: $e');
+      setState(() {
+        _isLoading = false;
+      });
+    }
+  }
+
+  Future<void> _addFavorite(String name, String category, String type) async {
+    final user = _auth.currentUser;
+    if (user == null) return;
+
+    try {
+      await _firestore.collection('favorites').add({
+        'userId': user.uid,
+        'name': name,
+        'category': category,
+        'type': type, // Store the type in Firestore
+        'createdAt': FieldValue.serverTimestamp(),
+      });
+      await _loadFavorites();
+    } catch (e) {
+      print('Error adding favorite: $e');
+    }
+  }
+
+  Future<void> _deleteFavorite(String id) async {
+    try {
+      await _firestore.collection('favorites').doc(id).delete();
+      await _loadFavorites();
+    } catch (e) {
+      print('Error deleting favorite: $e');
+    }
+  }
+
+  void _showAddFavoriteDialog() async {
     final TextEditingController nameController = TextEditingController();
-    final TextEditingController categoryController = TextEditingController();
+    final categories = await _categoryService.getCategories();
+    String selectedType = 'Income'; // Default to Income
+    bool showCategoryDropdown = false; // Initially hidden for Income
+
+    // Ensure we have at least the basic categories
+    if (!categories.contains('Income')) categories.add('Income');
+    if (!categories.contains('Expense')) categories.add('Expense');
+    if (!categories.contains('Other')) categories.add('Other');
+
+    // Sort the middle categories
+    categories.sort((a, b) => a.compareTo(b));
 
     showDialog(
       context: context,
       builder: (context) {
-        return AlertDialog(
-          title: Text('Add New Favorite'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              TextField(
-                controller: nameController,
-                decoration: InputDecoration(labelText: 'Reference'),
+        return StatefulBuilder(
+          builder: (context, setState) {
+            return AlertDialog(
+              title: Text('Add New Favorite'),
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    TextField(
+                      controller: nameController,
+                      decoration: InputDecoration(labelText: 'Reference'),
+                    ),
+                    SizedBox(height: 16),
+                    DropdownButtonFormField<String>(
+                      value: selectedType,
+                      decoration: InputDecoration(
+                        labelText: 'Type',
+                        border: OutlineInputBorder(),
+                      ),
+                      items: ['Income', 'Expense'].map((String type) {
+                        return DropdownMenuItem<String>(
+                          value: type,
+                          child: Text(type),
+                        );
+                      }).toList(),
+                      onChanged: (String? newValue) {
+                        setState(() {
+                          selectedType = newValue!;
+                          showCategoryDropdown = newValue == 'Expense';
+                          if (!showCategoryDropdown) {
+                            _selectedCategory = null;
+                          }
+                        });
+                      },
+                    ),
+                    SizedBox(height: 16),
+                    if (showCategoryDropdown)
+                      DropdownButtonFormField<String>(
+                        value: _selectedCategory,
+                        decoration: InputDecoration(
+                          labelText: 'Category',
+                          border: OutlineInputBorder(),
+                        ),
+                        items: categories.where((c) => c != 'Income').map((String category) {
+                          return DropdownMenuItem<String>(
+                            value: category,
+                            child: Text(category),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          setState(() {
+                            _selectedCategory = newValue;
+                          });
+                        },
+                        validator: (value) =>
+                        value == null ? 'Please select a category' : null,
+                      ),
+                  ],
+                ),
               ),
-              TextField(
-                controller: categoryController,
-                decoration: InputDecoration(labelText: 'Category'),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
-              child: Text('Cancel'),
-            ),
-            TextButton(
-              onPressed: () {
-                // Add the new favorite if the fields are not empty
-                if (nameController.text.isNotEmpty &&
-                    categoryController.text.isNotEmpty) {
-                  setState(() {
-                    favorites.add(Favorite(
-                      name: nameController.text,
-                      category: categoryController.text,
-                    ));
-                  });
-                  Navigator.of(context).pop(); // Close the dialog
-                  print('Favorite added');
-                } else {
-                  // You can show a message if the fields are empty
-                  print('Please fill in both fields');
-                }
-              },
-              child: Text('ADD'),
-            ),
-          ],
+              actions: [
+                TextButton(
+                  onPressed: () {
+                    _selectedCategory = null;
+                    Navigator.pop(context);
+                  },
+                  child: Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: () async {
+                    if (nameController.text.isNotEmpty &&
+                        (selectedType == 'Income' ||
+                            (selectedType == 'Expense' && _selectedCategory != null))) {
+                      Navigator.pop(context);
+                      await _addFavorite(
+                        nameController.text,
+                        selectedType == 'Income' ? 'Income' : _selectedCategory!,
+                        selectedType, // Pass the type to _addFavorite
+                      );
+                      setState(() {
+                        _selectedCategory = null;
+                      });
+                    }
+                  },
+                  child: Text('ADD'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
   }
 
-  void _editFavorite(Favorite favorite) {
+  void _showEditFavoriteDialog(Favorite favorite) {
     final TextEditingController amountController = TextEditingController();
+    final DateTime currentDate = DateTime.now();
+    DateTime selectedDate = currentDate;
+    final TextEditingController dateController = TextEditingController(
+      text: currentDate.toLocal().toString().split(' ')[0],
+    );
 
     showDialog(
       context: context,
@@ -94,35 +247,85 @@ class _FavoritePageState extends State<FavoritePage> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Display category
+              Text('Type: ${favorite.type}'),
+              SizedBox(height: 10),
               Text('Category: ${favorite.category}'),
               SizedBox(height: 10),
-              // Display the current date (only the date, no time)
-              Text('Date: ${DateTime.now().toLocal().toString().split(' ')[0]}'),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: dateController,
+                      readOnly: true,
+                      decoration: InputDecoration(
+                        labelText: 'Date',
+                        suffixIcon: Icon(Icons.calendar_today),
+                      ),
+                      onTap: () async {
+                        final DateTime? picked = await showDatePicker(
+                          context: context,
+                          initialDate: selectedDate,
+                          firstDate: DateTime(2000),
+                          lastDate: DateTime(2101),
+                        );
+                        if (picked != null && picked != selectedDate) {
+                          selectedDate = picked;
+                          dateController.text = picked.toLocal().toString().split(' ')[0];
+                        }
+                      },
+                    ),
+                  ),
+                ],
+              ),
               SizedBox(height: 10),
-              // Input field for amount
               TextField(
                 controller: amountController,
                 decoration: InputDecoration(labelText: 'Amount'),
+                keyboardType: TextInputType.numberWithOptions(decimal: true),
               ),
             ],
           ),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
+              onPressed: () => Navigator.pop(context),
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                // Handle the adding logic here
+              onPressed: () async {
                 if (amountController.text.isNotEmpty) {
-                  print('Amount added: ${amountController.text}');
-                } else {
-                  print('Please enter an amount');
+                  try {
+                    final double amount = double.parse(amountController.text);
+                    final user = _auth.currentUser;
+                    if (user == null) return;
+
+                    // Create transaction in Firestore
+                    await _firestore.collection('transactions').add({
+                      'userId': user.uid,
+                      'amount': amount,
+                      'category': favorite.category,
+                      'description': favorite.name,
+                      'type': favorite.type,
+                      'date': Timestamp.fromDate(selectedDate),
+                      'createdAt': FieldValue.serverTimestamp(),
+                    });
+
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Transaction added successfully'),
+                        backgroundColor: Colors.black,
+                      ),
+                    );
+                  } catch (e) {
+                    print('Error creating transaction: $e');
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text('Failed to add transaction: ${e.toString()}'),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
                 }
-                Navigator.of(context).pop(); // Close the dialog
+                Navigator.pop(context);
               },
               child: Text('ADD'),
             ),
@@ -132,8 +335,7 @@ class _FavoritePageState extends State<FavoritePage> {
     );
   }
 
-  // Function to delete a favorite with confirmation
-  void _deleteFavorite(int index) {
+  void _showDeleteConfirmation(String id) {
     showDialog(
       context: context,
       builder: (context) {
@@ -142,18 +344,13 @@ class _FavoritePageState extends State<FavoritePage> {
           content: Text('Are you sure you want to delete this favorite?'),
           actions: [
             TextButton(
-              onPressed: () {
-                Navigator.of(context).pop(); // Close the dialog
-              },
+              onPressed: () => Navigator.pop(context),
               child: Text('Cancel'),
             ),
             TextButton(
-              onPressed: () {
-                setState(() {
-                  favorites.removeAt(index);
-                });
-                Navigator.of(context).pop(); // Close the dialog
-                print('Favorite deleted');
+              onPressed: () async {
+                Navigator.pop(context);
+                await _deleteFavorite(id);
               },
               child: Text('Confirm'),
             ),
@@ -170,84 +367,44 @@ class _FavoritePageState extends State<FavoritePage> {
         title: Text('Favorites'),
         centerTitle: true,
       ),
-      body: SingleChildScrollView(
+      body: _isLoading
+          ? Center(child: CircularProgressIndicator())
+          : SingleChildScrollView(
         padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            // Add button aligned to the right
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
                 ElevatedButton(
-                  onPressed: _addFavorite,
+                  onPressed: _showAddFavoriteDialog,
                   style: ElevatedButton.styleFrom(
-                    foregroundColor: Colors.white, backgroundColor: Color(0xFF006FB9), // Text color set to white
+                    foregroundColor: Colors.white,
+                    backgroundColor: Color(0xFF006FB9),
                   ),
                   child: Text('ADD'),
                 ),
               ],
             ),
-
-            // Favorites Cards
             SizedBox(height: 10),
             if (favorites.isEmpty)
               Center(child: Text('No favorites added yet')),
             ...favorites.map((favorite) {
-              int index = favorites.indexOf(favorite);
               return GestureDetector(
-                onTap: () => _editFavorite(favorite),
+                onTap: () => _showEditFavoriteDialog(favorite),
                 child: FavoriteCard(
                   favorite.name,
                   favorite.category,
-                  onDelete: () => _deleteFavorite(index),
+                  favorite.type, // Pass the type to FavoriteCard
+                  onDelete: () => _showDeleteConfirmation(favorite.id),
                 ),
               );
             }).toList(),
           ],
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Color(0xFF006FB9),
-        elevation: 10,
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white,
-        items: [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.analytics_outlined),
-            label: 'Analytics',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.monetization_on),
-            label: 'Transactions',
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.more_horiz),
-            label: 'More',
-          ),
-        ],
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => AnalyticsPage()),
-            );
-            print("Analytics Clicked");
-          } else if (index == 1) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => TransactionPage()),
-            );
-            print("Transactions Clicked");
-          } else if (index == 2) {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => MorePage()),
-            );
-            print("More Clicked");
-          }
-        },
-      ),
+      // Bottom navigation bar has been removed
     );
   }
 }
@@ -255,9 +412,10 @@ class _FavoritePageState extends State<FavoritePage> {
 class FavoriteCard extends StatelessWidget {
   final String name;
   final String category;
+  final String type; // Added type field
   final VoidCallback onDelete;
 
-  FavoriteCard(this.name, this.category, {required this.onDelete});
+  FavoriteCard(this.name, this.category, this.type, {required this.onDelete}); // Updated constructor
 
   @override
   Widget build(BuildContext context) {
@@ -270,13 +428,23 @@ class FavoriteCard extends StatelessWidget {
           name,
           style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
-        subtitle: Text(
-          category,
-          style: TextStyle(fontSize: 14),
+        subtitle: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'Type: $type', // Display the type
+              style: TextStyle(fontSize: 14),
+            ),
+            SizedBox(height: 4),
+            Text(
+              'Category: $category',
+              style: TextStyle(fontSize: 14),
+            ),
+          ],
         ),
         trailing: IconButton(
           icon: Icon(Icons.delete, color: Colors.red),
-          onPressed: onDelete, // Handle delete action
+          onPressed: onDelete,
         ),
       ),
     );
