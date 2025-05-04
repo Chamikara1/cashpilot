@@ -7,11 +7,13 @@ import 'package:intl/intl.dart';
 import 'transactionpage.dart';
 import 'notificationspage.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'transaction_model.dart';
 import 'transaction_service.dart';
 import 'sms_service.dart';
 import 'package:badges/badges.dart' as badges;
 import 'dart:async';
+import 'main.dart';
 
 class DashboardPage extends StatefulWidget {
   @override
@@ -20,15 +22,20 @@ class DashboardPage extends StatefulWidget {
 
 class _DashboardPageState extends State<DashboardPage> {
   final TextEditingController _incomeDateController = TextEditingController();
-  final TextEditingController _incomeReferenceController = TextEditingController();
+  final TextEditingController _incomeReferenceController =
+  TextEditingController();
   final TextEditingController _incomeAmountController = TextEditingController();
 
   final TextEditingController _expenseDateController = TextEditingController();
-  final TextEditingController _expenseReferenceController = TextEditingController();
-  final TextEditingController _expenseAmountController = TextEditingController();
+  final TextEditingController _expenseReferenceController =
+  TextEditingController();
+  final TextEditingController _expenseAmountController =
+  TextEditingController();
 
   final TransactionService _transactionService = TransactionService();
   final SmsService _smsService = SmsService();
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   String? _selectedCategory;
@@ -93,7 +100,8 @@ class _DashboardPageState extends State<DashboardPage> {
     }
   }
 
-  Future<void> _selectDate(BuildContext context, TextEditingController controller) async {
+  Future<void> _selectDate(
+      BuildContext context, TextEditingController controller) async {
     DateTime? picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
@@ -108,7 +116,8 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Future<void> _addIncome() async {
-    if (_incomeReferenceController.text.isEmpty || _incomeAmountController.text.isEmpty) {
+    if (_incomeReferenceController.text.isEmpty ||
+        _incomeAmountController.text.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Please fill in all fields')),
       );
@@ -216,8 +225,31 @@ class _DashboardPageState extends State<DashboardPage> {
     );
   }
 
+  Future<void> _handleLogout() async {
+    try {
+      // Sign out from Google if signed in with Google
+      await _googleSignIn.signOut();
+
+      // Sign out from Firebase
+      await _auth.signOut();
+
+      // Navigate to login screen
+      Navigator.pushReplacement(
+        context,
+        MaterialPageRoute(builder: (context) => LoginScreen()),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error signing out: $e')),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final userName = user?.displayName ?? 'User';
+
     return Scaffold(
       body: Column(
         children: [
@@ -233,7 +265,7 @@ class _DashboardPageState extends State<DashboardPage> {
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
                       Text(
-                        'Hello!',
+                        'Hello! $userName',
                         style: TextStyle(
                           fontSize: 24,
                           fontWeight: FontWeight.bold,
@@ -246,14 +278,18 @@ class _DashboardPageState extends State<DashboardPage> {
                           badgeStyle: badges.BadgeStyle(
                             badgeColor: Colors.red,
                           ),
-                          position: badges.BadgePosition.topEnd(top: -5, end: -5),
-                          child: Icon(Icons.notifications, color: Color(0xFF006FB9)),
+                          position: badges.BadgePosition.topEnd(
+                              top: -5, end: -5),
+                          child: Icon(Icons.notifications,
+                              color: Color(0xFF006FB9)),
                         )
-                            : Icon(Icons.notifications, color: Color(0xFF006FB9)),
+                            : Icon(Icons.notifications,
+                            color: Color(0xFF006FB9)),
                         onPressed: () {
                           Navigator.push(
                             context,
-                            MaterialPageRoute(builder: (context) => NotificationsPage()),
+                            MaterialPageRoute(
+                                builder: (context) => NotificationsPage()),
                           );
                         },
                       ),
@@ -279,7 +315,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       labelText: 'Date',
                       suffixIcon: IconButton(
                         icon: Icon(Icons.calendar_today),
-                        onPressed: () => _selectDate(context, _incomeDateController),
+                        onPressed: () =>
+                            _selectDate(context, _incomeDateController),
                       ),
                     ),
                   ),
@@ -323,7 +360,8 @@ class _DashboardPageState extends State<DashboardPage> {
                       labelText: 'Date',
                       suffixIcon: IconButton(
                         icon: Icon(Icons.calendar_today),
-                        onPressed: () => _selectDate(context, _expenseDateController),
+                        onPressed: () =>
+                            _selectDate(context, _expenseDateController),
                       ),
                     ),
                   ),
@@ -339,10 +377,13 @@ class _DashboardPageState extends State<DashboardPage> {
                         child: Text('Other'),
                       ),
                     ],
-                    onChanged: (value) => setState(() => _selectedCategory = value),
+                    onChanged: (value) =>
+                        setState(() => _selectedCategory = value),
                     decoration: InputDecoration(
                       labelText: 'Category',
-                      hintText: _loadingCategories ? 'Loading categories...' : 'Select a category',
+                      hintText: _loadingCategories
+                          ? 'Loading categories...'
+                          : 'Select a category',
                     ),
                   ),
                   TextField(
@@ -372,7 +413,8 @@ class _DashboardPageState extends State<DashboardPage> {
           // Bottom Navigation
           Container(
             decoration: BoxDecoration(
-              border: Border(top: BorderSide(color: Colors.grey.shade300, width: 1)),
+              border: Border(
+                  top: BorderSide(color: Colors.grey.shade300, width: 1)),
               color: Colors.white,
             ),
             child: BottomNavigationBar(
@@ -396,11 +438,16 @@ class _DashboardPageState extends State<DashboardPage> {
               ],
               onTap: (index) {
                 if (index == 0) {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => AnalyticsPage()));
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (context) => AnalyticsPage()));
                 } else if (index == 1) {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => TransactionPage()));
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => TransactionPage()));
                 } else if (index == 2) {
-                  Navigator.push(context, MaterialPageRoute(builder: (context) => MorePage()));
+                  Navigator.push(context,
+                      MaterialPageRoute(builder: (context) => MorePage()));
                 }
               },
             ),
@@ -408,7 +455,8 @@ class _DashboardPageState extends State<DashboardPage> {
         ],
       ),
       floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 60.0), // Adjust this value to position above bottom bar
+        padding: const EdgeInsets.only(
+            bottom: 60.0), // Adjust this value to position above bottom bar
         child: FloatingActionButton(
           onPressed: () {
             Navigator.push(

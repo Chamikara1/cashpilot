@@ -198,38 +198,6 @@ class _BankPageState extends State<BankPage> {
           },
         ),
       ),
-      bottomNavigationBar: BottomNavigationBar(
-        backgroundColor: Color(0xFF006FB9),
-        selectedItemColor: Colors.white,
-        unselectedItemColor: Colors.white,
-        currentIndex: 2,
-        items: [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.analytics_outlined), label: 'Analytics'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.monetization_on), label: 'Transactions'),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.more_horiz), label: 'More'),
-        ],
-        onTap: (index) {
-          if (index == 0) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => AnalyticsPage()),
-            );
-          } else if (index == 1) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => TransactionPage()),
-            );
-          } else if (index == 2) {
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(builder: (context) => MorePage()),
-            );
-          }
-        },
-      ),
     );
   }
 }

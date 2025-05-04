@@ -6,7 +6,7 @@ class SmsService {
   final Telephony telephony = Telephony.instance;
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final String allowedNumber = '+94776098865';
+  final String allowedNumber = '+94769105477';
 
   Future<void> fetchAndStoreBankMessages() async {
     try {

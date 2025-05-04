@@ -1,0 +1,1 @@
+C:\Users\Heshan Jayasinghe\AndroidStudioProjects\cashpilot\build\app\intermediates\cxx\RelWithDebInfo\2d287r60\obj\arm64-v8a

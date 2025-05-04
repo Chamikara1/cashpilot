@@ -1,0 +1,2 @@
+C:/Users/Heshan Jayasinghe/AndroidStudioProjects/cashpilot/android/app/.cxx/RelWithDebInfo/2d287r60/armeabi-v7a/CMakeFiles/edit_cache.dir
+C:/Users/Heshan Jayasinghe/AndroidStudioProjects/cashpilot/android/app/.cxx/RelWithDebInfo/2d287r60/armeabi-v7a/CMakeFiles/rebuild_cache.dir
